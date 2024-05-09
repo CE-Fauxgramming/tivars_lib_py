@@ -63,31 +63,34 @@ class TIGroup(SizedEntry, register=True):
 
         group = TIGroup(for_flash=entries[0].meta_length > TIEntry.base_meta_length, name=name)
 
-        for index, entry in enumerate(entries):
-            name = entry.raw.name.rstrip(b'\x00')
-            vat = bytearray([entry.type_id, 0, entry.version, 0, 0, entry.archived])
-
-            if entry.archived:
-                warn(f"Entry #{index} ({type(entry)}) is archived, which may lead to unexpected behavior on-calc.",
-                     UserWarning)
-
-            if isinstance(entry, TIGraphedEquation):
-                vat[0] |= entry.raw.flags
-
-            match entry.type_id:
-                case 0x05 | 0x06 | 0x15 | 0x17:
-                    vat += bytearray([len(name), *name])
-
-                case 0x01 | 0x0D:
-                    vat += bytearray([len(name) + 1, *name, 0])
-
-                case _:
-                    vat += name.ljust(3, b'\x00')
-
-            group.data += vat
-            group.data += entry.calc_data
+        for entry in entries:
+            group.add_entry(entry)
 
         return group
+
+    def add_entry(self, entry: TIEntry):
+        name = entry.raw.name.rstrip(b'\x00')
+        vat = bytearray([entry.type_id, 0, entry.version, 0, 0, entry.archived])
+
+        if entry.archived:
+            warn("Entry is archived, which may lead to unexpected behavior on-calc.",
+                 UserWarning)
+
+        if isinstance(entry, TIGraphedEquation):
+            vat[0] |= entry.raw.flags
+
+        match entry.type_id:
+            case 0x05 | 0x06 | 0x15 | 0x17:
+                vat += bytearray([len(name), *name])
+
+            case 0x01 | 0x0D:
+                vat += bytearray([len(name) + 1, *name, 0])
+
+            case _:
+                vat += name.ljust(3, b'\x00')
+
+        self.data += vat
+        self.data += entry.calc_data
 
     def get_min_os(self, data: bytes = None) -> OsVersion:
         return max([entry.get_min_os() for entry in self.ungroup(data)], default=OsVersions.INITIAL)

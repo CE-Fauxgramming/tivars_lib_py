@@ -13,6 +13,10 @@ class Section:
         self.name = " ".join(word[0].upper() + word[1:] for word in name.split("_"))
         self.subsections = []
 
+        # There's just no need
+        if self.name == "Calc Data":
+            self.name = "Data"
+
         doc = getattr(cls, name).__doc__ or ""
         try:
             self.description = doc.split("\n")[1].strip()
@@ -42,7 +46,7 @@ class Section:
                     self.length = getattr(cls, deco.args[0].id)
 
                 try:
-                    self.type = deco.args[1].id
+                    self.get_type(deco.args[1])
 
                 except IndexError:
                     self.type = "Bytes"
@@ -65,7 +69,7 @@ class Section:
             self.order = ast.literal_eval(deco.slice.lower or "0")
             self.offset = ast.literal_eval(deco.slice.lower or "0")
             self.length = (ast.literal_eval(deco.slice.upper or "0")) - self.offset
-            self.type = deco.value.args[1].id
+            self.get_type(deco.value.args[1])
             self.parent = deco.value.args[0].id
 
     def __gt__(self, other):
@@ -74,6 +78,14 @@ class Section:
     @property
     def span(self):
         return len(self.subsections)
+
+    def get_type(self, arg):
+        if isinstance(arg, ast.Subscript):
+            self.type = f"{arg.value.id}" \
+                        f"[{(arg.slice.lower or ast.Constant(0)).value}:{(arg.slice.upper or ast.Constant(8)).value}]"
+
+        else:
+            self.type = arg.id
 
 
 classes = {}
@@ -97,7 +109,7 @@ def is_section(attr) -> bool:
 
 
 def add_classes(path):
-    with open(path, 'r') as file:
+    with open(path, 'r', encoding="utf8") as file:
         node = ast.parse(file.read())
 
     loc = path.split("/")[-1][:-3]
@@ -108,7 +120,7 @@ def add_classes(path):
             continue
 
         name = child.name
-        if name.startswith("TI") or name.endswith("Entry"):
+        if name.startswith("TI") or name.endswith("Entry") and name != "SizedEntry":
             classes[name] = (vars(module)[name], {attr.name: attr for attr in child.body if is_section(attr)})
             pages[loc] = pages.get(loc, []) + [name]
 
@@ -190,7 +202,7 @@ for page in pages:
             continue
 
         if class_name in classes:
-            content += f"### {class_name}\n" + texts.get(class_name, "") + table_header
+            content += f"### {class_name}\n" + texts.get(class_name, "").rstrip() + "\n\n" + table_header
 
             for section in classes[class_name].values():
                 # Subsections are handled by their parent

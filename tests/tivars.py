@@ -80,8 +80,8 @@ class VarTests(unittest.TestCase):
     def test_save_to_file(self):
         test_var = TIVar.open("tests/data/var/Program.8xp")
 
-        self.assertEqual(test_var.extension, "8xp")
-        self.assertEqual(test_var.filename, "UNNAMED.8xp")
+        self.assertEqual(test_var.get_extension(), "8xp")
+        self.assertEqual(test_var.get_filename(), "UNNAMED.8xp")
         test_var.save("tests/data/var/Program_new.8xp")
 
         with open("tests/data/var/Program.8xp", 'rb') as orig:
@@ -106,8 +106,8 @@ class EntryTests(unittest.TestCase):
 
         test_program.save("tests/data/var/Program_new.8xp", header=test_header)
 
-        self.assertEqual(test_program.export().filename, "SETDATE.8xp")
-        self.assertEqual(test_program.export(model=TI_83).filename, "SETDATE.83p")
+        self.assertEqual(test_program.export().get_filename(), "SETDATE.8xp")
+        self.assertEqual(test_program.export(model=TI_83).get_filename(), "SETDATE.83p")
 
         with open("tests/data/var/Program.8xp", 'rb') as orig:
             with open("tests/data/var/Program_new.8xp", 'rb') as new:
@@ -125,7 +125,7 @@ class EntryTests(unittest.TestCase):
             test_header.load_from_file(file)
             file.seek(0)
 
-            test_var.load_var_file(file)
+            test_var.load_file(file)
             self.assertEqual(test_header | [test_program], test_var)
 
     def test_truthiness(self):
@@ -133,7 +133,7 @@ class EntryTests(unittest.TestCase):
         self.assertEqual(bool(test_program), True)
 
         test_program.clear()
-        self.assertEqual(bool(test_program), True)
+        self.assertEqual(bool(test_program), False)
 
 
 class TokenizationTests(unittest.TestCase):
